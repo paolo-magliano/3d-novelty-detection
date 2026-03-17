@@ -1,138 +1,105 @@
-# AML-DAAI Project 2023-2024
-## Code from Towards Open Set 3D Learning: Benchmarking and Understanding Semantic Novelty Detection on Pointclouds
-Official PyTorch implementation of ["Towards Open Set 3D Learning: Benchmarking and Understanding Semantic Novelty Detection on Pointclouds"](https://openreview.net/pdf?id=X2dHozbd1at) by Antonio Alliegro, Francesco Cappio Borlino and Tatiana Tommasi.
+# 3D Semantic Novelty Detection on Point Clouds
 
-**This work has been accepted to NeurIPS 2022 Datasets and Benchmarks Track.**
+Implementation and evaluation of **semantic novelty detection methods** for 3D point clouds, focusing on **synthetic-to-real generalization** scenarios.
 
-> **Abstract:** *In the last years, there has been significant progress in the field of 3D learning on classification, detection and segmentation problems. The vast majority of the existing studies focus on canonical closed-set conditions, neglecting the intrinsic open nature of the real-world. This limits the abilities of autonomous systems involved in safety-critical applications that require managing novel and unknown signals. In this context exploiting 3D data can be a valuable asset since it conveys rich information about the geometry of sensed objects and scenes. This paper provides the first broad study on Open Set 3D learning. We introduce a novel testbed with settings of increasing difficulty in terms of category semantic shift and cover both in-domain (synthetic-to-synthetic) and cross-domain (synthetic-to-real) scenarios. Moreover, we investigate the related out-of-distribution and Open Set 2D literature to understand if and how their most recent approaches are effective on 3D data. Our extensive benchmark positions several algorithms in the same coherent picture, revealing their strengths and limitations. The results of our analysis may serve as a reliable foothold for future tailored Open Set 3D models.*
+The project investigates how deep learning models can detect **out-of-distribution (OOD)** samples in 3D data, combining **discriminative and representation-based approaches**.  
+Developed as part of the *Advanced Machine Learning* course at Politecnico di Torino.
 
-## Introduction
+---
 
-This code allows to replicate all the experiments and reproduce all the results that we included in
-our paper.
+## Features
 
-### Requirements
-We perform our experiments with PyTorch 1.9.1+cu111 and Python 3.7. To install all the required packages simply run:
+- Implementation of **3D semantic novelty detection pipelines**
+- Evaluation on **synthetic-to-real domain shift scenarios**
+- Comparison of **discriminative and distance-based methods**
+- Analysis of **failure cases and model generalization**
+- Exploration of **pretrained 3D embeddings (OpenShape / Uni3D)**
 
-```bash
-pip install -r requirements.txt
-```
+---
 
-**Additional libraries** 
+## Overview
 
-N.B. to install PointNet++ ops the system-wide CUDA version must match the PyTorch one (CUDA 11 in this case).
+The task consists of identifying whether a 3D point cloud belongs to the **nominal data distribution (ID)** or is **out-of-distribution (OOD)**.
 
-```bash
-pip install "git+https://github.com/erikwijmans/Pointnet2_PyTorch.git#egg=pointnet2_ops&subdirectory=pointnet2_ops_lib"
-pip install "https://github.com/unlimblue/KNN_CUDA/releases/download/0.2/KNN_CUDA-0.2-py3-none-any.whl"
-```
+Unlike standard classification, the model must detect **previously unseen object categories**, making this an **open-set recognition problem in 3D space** :contentReference[oaicite:0]{index=0}.
 
-### Data
-Use the prepared script to download all datasets. 
+The project focuses on a **synthetic-to-real setting**, where models trained on synthetic data are evaluated on real-world samples, introducing both:
 
-```bash
-chmod +x download_data.sh
-./download_data.sh
-```
+- **Semantic shift** (new object categories)
+- **Domain shift** (distribution mismatch between training and test data) :contentReference[oaicite:1]{index=1}
 
-A common root for all datasets will be created in project dir, by default named *3D_OS_release_data* .
-```
-3D_OS_release_data (root)
-├─ ModelNet40_corrupted
-├─ sncore_fps_4096
-├─ ScanObjectNN
-├─ modelnet40_normal_resampled
-```
+---
 
-The absolute path to the datasets root must be passed as **--data_root** argument in all scripts.
+## Models and Methods
 
+### Backbone Models
 
-## Run example
+- **PointNet++**
+- **DGCNN**
 
-## RUNNING ON COLAB FOR STUDENTS
-<span style="color:red">
-In this repository we use PyTorch Distributed Training that assumes an environment/machine with multiple GPUs. To run experiments on Google Colab (single GPU machine) you need to remove "-m torch.distributed.launch --nproc_per_node=1" from the bash commands in the guidelines.
-</span>
+These architectures are designed to process **unordered point clouds** while ensuring:
 
-### Example
-```bash
-# Original bash command from README with PyTorch DDP:
-python -m torch.distributed.launch --nproc_per_node=1 classifiers/trainer_cla.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SN1 --src SN1 --loss CE 
+- **Permutation invariance**
+- **Geometric transformation invariance** :contentReference[oaicite:2]{index=2}
 
-# [AML/DAAI STUDENT] What you should run on COLAB or single GPU environment:
-python classifiers/trainer_cla.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SN1 --src SN1 --loss CE 
-```
-The same also holds for the eval commands. 
+---
 
+### Novelty Detection Approaches
 
-### Training
+- **Discriminative methods**
+  - Maximum Softmax Probability (MSP)
+  - Cross-Entropy-based scoring
 
-Each experiment requires to choose a backbone (through the config file), a loss function and a source set. For example: 
+- **Representation & Distance-based methods**
+  - Feature embedding extraction
+  - Distance-based scoring (e.g., L2 distance)
 
-```bash
-# multiple gpus
-python -m torch.distributed.launch --nproc_per_node=1 classifiers/trainer_cla.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SN1 --src SN1 --loss CE 
-```
+- **Pretrained embeddings**
+  - OpenShape
+  - Uni3D
 
-Details: 
+These methods estimate a **normality score** indicating how far a sample lies from the nominal data distribution :contentReference[oaicite:3]{index=3}.
 
- - the training seed can be specified via `--seed <int>` argument. Seeds used for our paper experiments
-   are: 1, 41, 13718. 
- - the source set determines which class set will be used for *known* classes in the given experiment. In case of synth->synth experiments the other two sets 
-   among [SN1, SN2, SN3] will define *unknown* classes. In case of synth->real experiments the
-   *unknown* classes set is composed of the other among [SR1, SR2] and a common OOD set. In practice
-   in each experiments there are two different sets of unknown classes.
- - training output is stored in `outputs/<exp_name>`. 
+---
 
-### Eval 
+## Methodology
 
-```bash
-# multiple gpus
-python -m torch.distributed.launch --nproc_per_node=1 classifiers/trainer_cla.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SN1 --src SN1 --loss CE -mode eval --ckpt_path outputs/DGCNN_CE_SN1/models/model_last.pth
+- Point cloud preprocessing and feature encoding  
+- Training of baseline classification models  
+- Implementation of novelty detection scoring functions  
+- Evaluation under **domain shift conditions**  
+- Comparative analysis between:
+  - trained vs pretrained representations  
+  - discriminative vs distance-based approaches  
 
-```
+---
 
-Example output:
-```bash
-Computing OOD metrics with MLS normality score...
-AUROC - Src label: 1, Tar label: 0
-Src Test - Clf Acc: 0.8522321428571429, Clf Bal Acc: 0.7607892805466309
-Auroc 1: 0.7345, FPR 1: 0.7905
-Auroc 2: 0.7574, FPR 2: 0.7458
-Auroc 3: 0.7440, FPR 3: 0.7719
-to spreadsheet: 0.734540224202969,0.7904599659284497,0.7573800391095067,0.7457882069795427,0.7440065016031351,0.7719451371571072
-```
+## Results
 
-The output contains closed set accuracy on known classes (Clf Acc), balanced closed set accuracy
-(Clf Bal Acc) and 3 sets of open set performance results. In the paper we report AUROC 3 and FPR 3
-which refer to the scenario `(known) src -> unknown set 1 + unknown set 2`.
+- **Distance-based methods on pretrained embeddings** showed strong generalization  
+- **Discriminative approaches** struggled under domain shift  
+- Synthetic-to-real transfer highlighted significant performance gaps  
+- Model performance strongly depends on:
+  - embedding quality  
+  - distance metric choice  
+  - pretraining dataset overlap  
 
-## Replicating paper results
+---
 
-In the following we report the commands necessary to replicate all of the main paper results (Table
-1 and 3). All experiments of the paper are repeated with the 3 seeds specified above and the results
-is averaged across the three runs.
+## Report
 
-See [here](docs/paper_results_synth.md) for Synthetic Benchmark results replication and [here](docs/paper_results_real.md) for Synthetic to Real Benchmark. 
+A detailed description of the methodology, experiments, and analysis is available in:
 
-## Citation 
+📄 `report.pdf`
 
-If you find our paper/code useful please consider citing our paper: 
+---
 
-```
-@inproceedings{
-alliegro2022towards,
-title={Towards Open Set 3D Learning: Benchmarking and Understanding Semantic Novelty Detection on Pointclouds},
-author={Antonio Alliegro and Francesco Cappio Borlino and Tatiana Tommasi},
-booktitle={Thirty-sixth Conference on Neural Information Processing Systems Datasets and Benchmarks Track},
-year={2022},
-url={https://openreview.net/forum?id=X2dHozbd1at}
-}
-```
+## Notes
 
+This project highlights key challenges in **3D open-set recognition**, including:
 
-## This repo is still under construction
-- [x] Upload Code
-- [x] Upload Data
-- [ ] Acknowledgements
-- [x] Link to the arXiv and citation
+- Handling **non-Euclidean data representations** (point clouds)  
+- Robustness under **domain shift (synthetic → real)**  
+- Trade-offs between **supervised and representation-based methods**  
+
+It also explores how **foundation models for 3D data** can improve generalization without task-specific training.
